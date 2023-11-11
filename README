@@ -1,0 +1,11 @@
+This is a basic SystemC/TLM example from https://www.edaplayground.com/x/56Q4
+
+Prerequisite packages:
+- SystemC compiled with C17 standard
+- Cmake
+$ cd [Project_name] (cd Initator_Receiver)
+$ mkdir build
+$ cd build
+$ cmake ..
+$ make
+$ ./SystemC_Transmitter_Receiver
