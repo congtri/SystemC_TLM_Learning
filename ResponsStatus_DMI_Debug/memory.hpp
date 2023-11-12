@@ -13,13 +13,16 @@ using namespace std;
 
 class Memory : sc_module
 {
-    // TLM-2 socket, defaults to 32-bits wide, base protocol
-    tlm_utils::simple_target_socket<Memory> socket;
-
+public:
     enum
     {
         SIZE = 256
     };
+
+    // TLM-2 socket, defaults to 32-bits wide, base protocol
+    tlm_utils::simple_target_socket<Memory> socket;
+    int mem[SIZE];
+
     const sc_time LATENCY;
 
     SC_CTOR(Memory)
@@ -37,11 +40,12 @@ class Memory : sc_module
         SC_THREAD(invalidation_process);
     }
 
+private:
     /**
      * @brief TLM-2 blocking transport method
-     * 
-     * @param trans 
-     * @param delay 
+     *
+     * @param trans
+     * @param delay
      */
     virtual void b_transport(tlm::tlm_generic_payload &trans, sc_time &delay)
     {
@@ -121,13 +125,9 @@ class Memory : sc_module
         trans.set_response_status(tlm::TLM_OK_RESPONSE);
     }
 
-    // *********************************************
-    // 
-    // *********************************************
-
     /**
      * @brief TLM-2 forward DMI method
-     * Get the direct mem ptr object. It is called by the initiator along the forward path and is implemented by the target, 
+     * Get the direct mem ptr object. It is called by the initiator along the forward path and is implemented by the target,
      * a memory in our example. The memory uses the simple_target_socket, and as for b_transport,
      * the target must register the implementation of the method with the socket.
      * Otherwise, the simple socket would supply a default implementation that takes no action.
@@ -141,14 +141,14 @@ class Memory : sc_module
                                     tlm::tlm_dmi &dmi_data)
     {
         /**
-        * The target (in this example is Memory) must decide whether or not it can grant the kind of access being requested,
-        * and may even grant a higher level of access than requested.
-        * In this example, the target grants read/write access whatever the mode of the request.
-        * Ultimately the DMI transaction type is a template parameter, so applications can substitute their own modes of access where required.
-        * Of course, using a non-standard DMI transaction type will limit interoperability,
-        * just as substituting a non-standard type in place of the generic payload would limit interoperability when using the transport interface.
-        */
-       
+         * The target (in this example is Memory) must decide whether or not it can grant the kind of access being requested,
+         * and may even grant a higher level of access than requested.
+         * In this example, the target grants read/write access whatever the mode of the request.
+         * Ultimately the DMI transaction type is a template parameter, so applications can substitute their own modes of access where required.
+         * Of course, using a non-standard DMI transaction type will limit interoperability,
+         * just as substituting a non-standard type in place of the generic payload would limit interoperability when using the transport interface.
+         */
+
         // The target must now populate the DMI data object to describe the details of the access being given.
 
         // Permit read and write access
@@ -174,12 +174,9 @@ class Memory : sc_module
         }
     }
 
-    // *********************************************
-    // TLM-2 debug transport method
-    // *********************************************
-
     /**
-     * @brief The purpose of the debug transport interface is to give an initiator the ability to read or write memory
+     * @brief TLM-2 debug transport method
+     * The purpose of the debug transport interface is to give an initiator the ability to read or write memory
      * in the target without causing any side-effects and without simulation time passing.
      * There are some similarities between DMI and debug, but the intent is very different.
      * DMI is intended to speed-up simulation during normal transactions, whereas the debug transport interface is exclusively intended for debug.
@@ -208,6 +205,4 @@ class Memory : sc_module
 
         return num_bytes;
     }
-
-    int mem[SIZE];
 };
