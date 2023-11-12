@@ -9,7 +9,9 @@ using namespace std;
 #include "tlm_utils/simple_initiator_socket.h"
 #include "tlm_utils/simple_target_socket.h"
 
-struct Memory : sc_module
+// Target module representing a simple memory
+
+class Memory : sc_module
 {
     // TLM-2 socket, defaults to 32-bits wide, base protocol
     tlm_utils::simple_target_socket<Memory> socket;
@@ -35,7 +37,12 @@ struct Memory : sc_module
         SC_THREAD(invalidation_process);
     }
 
-    // TLM-2 blocking transport method
+    /**
+     * @brief TLM-2 blocking transport method
+     * 
+     * @param trans 
+     * @param delay 
+     */
     virtual void b_transport(tlm::tlm_generic_payload &trans, sc_time &delay)
     {
         tlm::tlm_command cmd = trans.get_command();
@@ -63,7 +70,7 @@ struct Memory : sc_module
             return;
         }
 
-        /** 
+        /**
          * The address error response should be used to indicate that the address is out-of-range or
          * that the transaction failed because of the value of the address given in the transaction.
          */
@@ -75,7 +82,7 @@ struct Memory : sc_module
         }
 
         /**
-         * The byte enable error response should be used to indicate either that the value of the byte enables in the transaction object 
+         * The byte enable error response should be used to indicate either that the value of the byte enables in the transaction object
          * caused an error at the target, or that the target does not support byte enables at all, as is the case in this example.
          */
         if (len > 4 || wid < len)
@@ -101,11 +108,13 @@ struct Memory : sc_module
         // Set DMI hint to indicated that DMI is supported
         // *********************************************
 
-        // The target may signal to the initiator that it is able to support
-        // the direct memory interface using the DMI hint attribute of the generic payload.
-        // This can provide a simulation speedup for the initiator, because there is no point in the initiator
-        // making repeated calls to get_direct_mem_ptr if it can be told in advance that such calls are going to fail.
-        // Hence the b_transport method in our example makes the following call to set the DMI hint
+        /**
+         * The target may signal to the initiator that it is able to support
+         * the direct memory interface using the DMI hint attribute of the generic payload.
+         * This can provide a simulation speedup for the initiator, because there is no point in the initiator
+         * making repeated calls to get_direct_mem_ptr if it can be told in advance that such calls are going to fail.
+         * Hence the b_transport method in our example makes the following call to set the DMI hint
+         */
         trans.set_dmi_allowed(true);
 
         // Obliged to set response status to indicate successful completion
@@ -113,13 +122,13 @@ struct Memory : sc_module
     }
 
     // *********************************************
-    // TLM-2 forward DMI method
+    // 
     // *********************************************
 
     /**
-     * @brief Get the direct mem ptr object.
-     * It is called by the initiator along the forward path and is implemented by the target, a memory in our example.
-     * The memory uses the simple_target_socket, and as for b_transport,
+     * @brief TLM-2 forward DMI method
+     * Get the direct mem ptr object. It is called by the initiator along the forward path and is implemented by the target, 
+     * a memory in our example. The memory uses the simple_target_socket, and as for b_transport,
      * the target must register the implementation of the method with the socket.
      * Otherwise, the simple socket would supply a default implementation that takes no action.
      *
@@ -131,13 +140,15 @@ struct Memory : sc_module
     virtual bool get_direct_mem_ptr(tlm::tlm_generic_payload &trans,
                                     tlm::tlm_dmi &dmi_data)
     {
-        // The target (in this example is Memory) must decide whether or not it can grant the kind of access being requested,
-        // and may even grant a higher level of access than requested.
-        // In this example, the target grants read/write access whatever the mode of the request.
-        // Ultimately the DMI transaction type is a template parameter, so applications can substitute their own modes of access where required.
-        // Of course, using a non-standard DMI transaction type will limit interoperability,
-        // just as substituting a non-standard type in place of the generic payload would limit interoperability when using the transport interface.
-
+        /**
+        * The target (in this example is Memory) must decide whether or not it can grant the kind of access being requested,
+        * and may even grant a higher level of access than requested.
+        * In this example, the target grants read/write access whatever the mode of the request.
+        * Ultimately the DMI transaction type is a template parameter, so applications can substitute their own modes of access where required.
+        * Of course, using a non-standard DMI transaction type will limit interoperability,
+        * just as substituting a non-standard type in place of the generic payload would limit interoperability when using the transport interface.
+        */
+       
         // The target must now populate the DMI data object to describe the details of the access being given.
 
         // Permit read and write access

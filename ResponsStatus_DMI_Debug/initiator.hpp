@@ -10,8 +10,9 @@ using namespace std;
 #include "tlm_utils/simple_target_socket.h"
 
 // Initiator module generating generic payload transactions
-struct Initiator : sc_module
+class Initiator : sc_module
 {
+public:
     // TLM-2 socket, defaults to 32-bits wide, base protocol
     tlm_utils::simple_initiator_socket<Initiator> socket;
 
@@ -19,14 +20,36 @@ struct Initiator : sc_module
         : socket("socket"), // Construct and name socket
           dmi_ptr_valid(false)
     {
-        // Register callbacks for incoming interface method calls
-        // The initiator must implement the invalidate_direct_mem_ptr method to wipe 
-        // any existing pointers as requested by the target from time-to-time, and register this method with the simple initiator socket
+        /**
+         * Register callbacks for incoming interface method calls
+         * The initiator must implement the invalidate_direct_mem_ptr method to wipe
+         * any existing pointers as requested by the target from time-to-time, and register this method with the simple initiator socket
+         */
         socket.register_invalidate_direct_mem_ptr(this, &Initiator::invalidate_direct_mem_ptr);
 
         SC_THREAD(thread_process);
     }
 
+    /**
+     * @brief TLM-2 backward DMI method
+     * The initiator must implement the invalidate_direct_mem_ptr method to wipe any existing pointers
+     * as requested by the target from time-to-time, and register this method with the simple initiator socket.
+     * In this case the initiator ignores the bounds of the direct memory region, and simply invalidates the DMI pointer whatever
+     * @param start_range
+     * @param end_range
+     */
+    virtual void invalidate_direct_mem_ptr(sc_dt::uint64 start_range,
+                                           sc_dt::uint64 end_range)
+    {
+        // Ignore range and invalidate all DMI pointers regardless
+        dmi_ptr_valid = false;
+    }
+
+private:
+    bool dmi_ptr_valid;
+    tlm::tlm_dmi dmi_data;
+
+protected:
     void thread_process()
     {
         // TLM-2 generic payload transaction, reused across calls to b_transport, DMI and debug
@@ -41,13 +64,11 @@ struct Initiator : sc_module
             if (cmd == tlm::TLM_WRITE_COMMAND)
                 data = 0xFF000000 | i;
 
-            // *********************************************
             // Use DMI if it is available, reusing same transaction object
-            // *********************************************
-
             if (dmi_ptr_valid)
             {
                 // Bypass transport interface and use direct memory interface
+
                 // Implement target latency
                 if (cmd == tlm::TLM_READ_COMMAND)
                 {
@@ -88,26 +109,22 @@ struct Initiator : sc_module
                 // Initiator obliged to check response status
                 if (trans->is_response_error())
                 {
-                    // *********************************************
                     // Print response string
-                    // *********************************************
-
                     char txt[100];
                     sprintf(txt, "Error from b_transport, response status = %s",
                             trans->get_response_string().c_str());
                     SC_REPORT_ERROR("TLM-2", txt);
                 }
 
-                // *********************************************
                 // Check DMI hint
-                // *********************************************
-
                 if (trans->is_dmi_allowed())
                 {
-                    // Re-user transaction object for DMI
-                    // the initiator is reusing the very same transaction object for both transport and direct memory interfaces, which improves the efficiency of the simulation.
-                    // Subsequently, the initiator can use the DMI pointer to bypass the transport interface
-                    // When the initiator is using DMI, it honors the latencies passed with the dmi_data object.
+                    /**
+                     * Re-user transaction object for DMI
+                     * the initiator is reusing the very same transaction object for both transport and direct memory interfaces, which improves the efficiency of the simulation.
+                     * Subsequently, the initiator can use the DMI pointer to bypass the transport interface
+                     * When the initiator is using DMI, it honors the latencies passed with the dmi_data object.
+                     */
                     dmi_data.init();
                     dmi_ptr_valid = socket->get_direct_mem_ptr(*trans, dmi_data);
                 }
@@ -118,10 +135,7 @@ struct Initiator : sc_module
             }
         }
 
-        // *********************************************
         // Use debug transaction interface to dump memory contents, reusing same transaction object
-        // *********************************************
-
         trans->set_address(0);
         trans->set_read();
         trans->set_data_length(128);
@@ -137,26 +151,4 @@ struct Initiator : sc_module
                  << *(reinterpret_cast<unsigned int *>(&data[i])) << endl;
         }
     }
-
-    // *********************************************
-    // TLM-2 backward DMI method
-    // *********************************************
-    /**
-     * @brief The initiator must implement the invalidate_direct_mem_ptr method to wipe any existing pointers 
-     * as requested by the target from time-to-time, and register this method with the simple initiator socket.
-     * In this case the initiator ignores the bounds of the direct memory region, and simply invalidates the DMI pointer whatever
-     * @param start_range 
-     * @param end_range 
-     */
-    virtual void invalidate_direct_mem_ptr(sc_dt::uint64 start_range,
-                                           sc_dt::uint64 end_range)
-    {
-        // Ignore range and invalidate all DMI pointers regardless
-        dmi_ptr_valid = false;
-    }
-
-    bool dmi_ptr_valid;
-    tlm::tlm_dmi dmi_data;
 };
-
-// Target module representing a simple memory
