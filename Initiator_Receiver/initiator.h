@@ -45,14 +45,14 @@ private:
                 data = 0xFF000000 | i;
 
             // Initialize 8 out of the 10 attributes, byte_enable_length and extensions being unused
-            trans->set_command(cmd);
-            trans->set_address(i);
-            trans->set_data_ptr(reinterpret_cast<unsigned char *>(&data));
-            trans->set_data_length(4);
-            trans->set_streaming_width(4);                            // = data_length to indicate no streaming
-            trans->set_byte_enable_ptr(0);                            // 0 indicates unused
-            trans->set_dmi_allowed(false);                            // Mandatory initial value
-            trans->set_response_status(tlm::TLM_INCOMPLETE_RESPONSE); // Mandatory initial value
+            trans->set_command(cmd);                                       // Set the command for the transaction. The cmd variable likely holds a value from the tlm::tlm_command enumeration, indicating the type of transaction (e.g., read or write).
+            trans->set_address(i);                                         // Set the address for the transaction. This line is configuring the address where the transaction will read from or write to.
+            trans->set_data_ptr(reinterpret_cast<unsigned char *>(&data)); // Set the data pointer for the transaction, converting to unsigned char*. This pointer references the data to be transferred.
+            trans->set_data_length(4);                                     // Set the length of the data associated with the transaction to 4 bytes.
+            trans->set_streaming_width(4);                                 // Set the streaming width for burst transfers (4 bytes, indicating no streaming).
+            trans->set_byte_enable_ptr(0);                                 // Set the byte-enable pointer for the transaction. 0 indicates that byte enables are not used.
+            trans->set_dmi_allowed(false);                                 // Set whether DMI (Direct Memory Interface) is allowed for this transaction. DMI allows direct access to memory without regular transaction processing.
+            trans->set_response_status(tlm::TLM_INCOMPLETE_RESPONSE);      // Set the response status of the transaction to indicate an incomplete response. Actual response status may be updated based on the outcome of the transaction.
 
             socket->b_transport(*trans, delay); // Blocking transport call
 
